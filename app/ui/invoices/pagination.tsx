@@ -3,52 +3,49 @@
 import { ArrowLeftIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
 import Link from 'next/link';
-import { generatePagination } from '@/app/lib/utils';
+import { usePathname, useSearchParams } from 'next/navigation';
 
 export default function Pagination({ totalPages }: { totalPages: number }) {
-  // NOTE: Uncomment this code in Chapter 11
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const currentPage = Number(searchParams.get('page')) || 1;
 
-  // const allPages = generatePagination(currentPage, totalPages);
+  const maxVisibleButtons = 5;
+
+  const allPages = generateFixedPagination(currentPage, totalPages, maxVisibleButtons);
+
+  const createPageURL = (pageNumber: number | string) => {
+    const params = new URLSearchParams(searchParams);
+    params.set('page', pageNumber.toString());
+    return `${pathname}?${params.toString()}`;
+  };
 
   return (
-    <>
-      {/*  NOTE: Uncomment this code in Chapter 11 */}
+    <div className="inline-flex">
+      <PaginationArrow
+        direction="left"
+        href={createPageURL(currentPage - 1)}
+        isDisabled={currentPage <= 1}
+      />
 
-      {/* <div className="inline-flex">
-        <PaginationArrow
-          direction="left"
-          href={createPageURL(currentPage - 1)}
-          isDisabled={currentPage <= 1}
-        />
+      <div className="flex -space-x-px">
+        {allPages.map((page, index) => (
+          <PaginationNumber
+            key={index}
+            href={typeof page === 'number' ? createPageURL(page) : '#'}
+            page={page}
+            isActive={currentPage === page}
+            isEllipsis={page === '...'}
+          />
+        ))}
+      </div>
 
-        <div className="flex -space-x-px">
-          {allPages.map((page, index) => {
-            let position: 'first' | 'last' | 'single' | 'middle' | undefined;
-
-            if (index === 0) position = 'first';
-            if (index === allPages.length - 1) position = 'last';
-            if (allPages.length === 1) position = 'single';
-            if (page === '...') position = 'middle';
-
-            return (
-              <PaginationNumber
-                key={page}
-                href={createPageURL(page)}
-                page={page}
-                position={position}
-                isActive={currentPage === page}
-              />
-            );
-          })}
-        </div>
-
-        <PaginationArrow
-          direction="right"
-          href={createPageURL(currentPage + 1)}
-          isDisabled={currentPage >= totalPages}
-        />
-      </div> */}
-    </>
+      <PaginationArrow
+        direction="right"
+        href={createPageURL(currentPage + 1)}
+        isDisabled={currentPage >= totalPages}
+      />
+    </div>
   );
 }
 
@@ -56,26 +53,24 @@ function PaginationNumber({
   page,
   href,
   isActive,
-  position,
+  isEllipsis,
 }: {
   page: number | string;
   href: string;
-  position?: 'first' | 'last' | 'middle' | 'single';
   isActive: boolean;
+  isEllipsis: boolean;
 }) {
   const className = clsx(
     'flex h-10 w-10 items-center justify-center text-sm border',
     {
-      'rounded-l-md': position === 'first' || position === 'single',
-      'rounded-r-md': position === 'last' || position === 'single',
+      'rounded-md': isEllipsis,
       'z-10 bg-blue-600 border-blue-600 text-white': isActive,
-      'hover:bg-gray-100': !isActive && position !== 'middle',
-      'text-gray-300': position === 'middle',
+      'hover:bg-gray-100': !isActive && !isEllipsis,
     },
   );
 
-  return isActive || position === 'middle' ? (
-    <div className={className}>{page}</div>
+  return isEllipsis ? (
+    <div className={className}>...</div>
   ) : (
     <Link href={href} className={className}>
       {page}
@@ -117,3 +112,53 @@ function PaginationArrow({
     </Link>
   );
 }
+
+function generateFixedPagination(
+  currentPage: number,
+  totalPages: number,
+  maxVisibleButtons: number
+): (number | string)[] {
+  const pages: (number | string)[] = [];
+  const maxButtons = Math.min(maxVisibleButtons, totalPages);
+
+  pages.push(1);
+
+  if (totalPages <= maxVisibleButtons) {
+    for (let i = 2; i <= totalPages; i++) {
+      pages.push(i);
+    }
+  } else {
+    let start: number;
+    let end: number;
+
+    if (currentPage <= Math.floor(maxButtons / 2)) {
+      start = 2;
+      end = maxButtons - 2;
+    } else if (currentPage > totalPages - Math.floor(maxButtons / 2)) {
+      start = totalPages - (maxButtons - 3);
+      end = totalPages - 1;
+    } else {
+      start = currentPage - Math.floor((maxButtons - 4) / 2);
+      end = currentPage + Math.floor((maxButtons - 4) / 2);
+    }
+
+    if (start > 2) {
+      pages.push('...');
+    }
+
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+
+    if (end < totalPages - 1) {
+      pages.push('...');
+    }
+
+    pages.push(totalPages);
+  }
+  return pages;
+}
+
+
+
+
